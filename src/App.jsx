@@ -50,8 +50,10 @@ const App = () => {
   // const c = document.getElementById("canvas");
   const context = c.getContext("2d");
 
+  context.canvas.width = dimension.width
+  context.canvas.height = dimension.height
   // Added dWidth and dHeight for proper dimension
-  context.drawImage(imageRef.current, 0, 0, dimension.width, dimension.height);
+  context.drawImage(imageRef.current, 0, 0);
   context.font = "12px Arial";
 
 
@@ -118,9 +120,8 @@ const App = () => {
       <input type="file" onChange={handleImage}/>
       <img src={image ? image : ''}  alt="image" ref={imageRef}/>
     </div>
-    <div className=' flex gap-4'>
-      {/* <img src={japan} alt="japan" ref={imageRef}/> */}
-      <canvas id="canvas"  ref={resRef}></canvas>
+    <div className='flex gap-4 max-w-[480px]'>
+      <canvas id="canvas" className='max-w-[480px]'  ref={resRef}></canvas>
     </div>
     <li>
       { objects.length ? 
