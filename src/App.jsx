@@ -10,6 +10,9 @@ const App = () => {
   const imageRef = useRef(null)
   const resRef = useRef(null)
   const [modelPromise, setModelPromise] = useState(null)
+  const [objects, setObjects] = useState([])
+  const [image, setImage] = useState(null)
+  const [dimension, setDimension] = useState({width: 0, height: 0})
 
   useEffect(() => {
 
@@ -48,8 +51,13 @@ const App = () => {
   const context = c.getContext("2d");
 
   // Added dWidth and dHeight for proper dimension
-  context.drawImage(imageRef.current, 0, 0, 600, 399);
+  context.drawImage(imageRef.current, 0, 0, dimension.width, dimension.height);
   context.font = "12px Arial";
+
+
+
+  renderObject(result)
+  // console.log(result)
 
   console.log("number of detections: ", result.length);
   for (let i = 0; i < result.length; i++) {
@@ -66,7 +74,35 @@ const App = () => {
     );
   }
   }
+
+  const renderObject = (res) => {
+    const data = res.map(x => ({
+      class: x.class,
+      score: x.score.toFixed(2)
+    }))
+
+
+    setObjects(data)
+  }
   
+  const handleImage = (e) => {
+    console.log(e.target.files)
+    let newImage = new Image()
+    newImage.src = URL.createObjectURL(e.target.files[0])
+    
+    newImage.onload = () => {
+
+
+      setDimension({
+        width: newImage.width, 
+        height: newImage.height  
+      })
+      console.log(`${newImage.width} - ${newImage.height}`)
+    }
+
+    setImage(URL.createObjectURL(e.target.files[0]))
+  }
+
   return (
     <>
     <div>
@@ -77,10 +113,43 @@ const App = () => {
       </select>
     </div>
     <div className='text-[4rem]'>Hello world</div>
-    <img src={japan} alt="japan" ref={imageRef}/>
-    <canvas id="canvas" width="600" height="399" ref={resRef}></canvas>
+    <button onClick={renderDetection} className='border-2 p-2 rounded-lg border-black text-[1.5rem]'>Click</button>
+    <div>
+      <input type="file" onChange={handleImage}/>
+      <img src={image ? image : ''}  alt="image" ref={imageRef}/>
+    </div>
+    <div className=' flex gap-4'>
+      {/* <img src={japan} alt="japan" ref={imageRef}/> */}
+      <canvas id="canvas"  ref={resRef}></canvas>
+    </div>
+    <li>
+      { objects.length ? 
+      
+      <table className='border-2 border-black w-[480px]'>
+        <tr className=' border-2 border-black'>
+          <th>Class</th>
+          <th>Score</th>
+        </tr>
+        {
+          objects.map((x, idx) => 
+          <tr key={idx} className=' border-2 border-black'>
+            <td>
+              {x.class}
+            </td>
+            <td>
+              {x.score}
+            </td>
+          </tr>  
+          )
+        }
+      </table>
+        :
+          <h4>None is detected</h4>
+      }
+      <ul>
 
-    <button onClick={renderDetection}>Click</button>
+      </ul>
+    </li>
     </>
   )
 }
