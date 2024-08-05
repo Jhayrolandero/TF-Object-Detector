@@ -3,77 +3,95 @@ import "@tensorflow/tfjs-backend-cpu";
 import "@tensorflow/tfjs-backend-webgl";
 import japan from "./assets/image1.jpg"
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
-
+import Canva from './components/Canva';
 
 
 const App = () => {
   const imageRef = useRef(null)
-  const resRef = useRef(null)
-  const [modelPromise, setModelPromise] = useState(null)
-  const [objects, setObjects] = useState([])
   const [image, setImage] = useState(null)
   const [dimension, setDimension] = useState({width: 0, height: 0})
 
-  useEffect(() => {
+  const ssdLiteRef = useRef(null)
+  const ssdV1 = useRef(null)
+  const ssdV2 = useRef(null)
 
+  const [enaLite, setEnaLite] = useState(false)
+  const [enaV1, setEnaV1] = useState(false)
+  const [enaV2, setEnaV2] = useState(false)
+
+  const [modelPromise, setModelPromise] = useState(null)
+  const [ssdV1Obj, setSSDV1Obj] = useState([])
+  const [ssdV2Obj, setSSDV2Obj] = useState([])
+  const [ssdLiteObj, setSSDLiteObj] = useState([])
+
+
+
+  useEffect(() => {
     setModelPromise(cocoSsd.load())
   }, [])
 
-  const seeRef = () => {
-    console.log(imageRef.current.src)
-  }
+  const renderPicture = () => {
 
-  const changeModel = async (e) => {
+    setSSDLiteObj(
+      renderFactory(
+        cocoSsd.load({
+          base: "lite_mobilenet_v2"
+        }), ssdLiteRef
+      )
+    )
+    setSSDV1Obj(
+      renderFactory(
+        cocoSsd.load({
+          base: "mobilenet_v1"
+        }), ssdV1
+      )
+    )
 
-    const model = await modelPromise
-    model.dispose();
-
-
-    setModelPromise(
-      cocoSsd.load({
-        base: e.target.value,
-        })
+    setSSDV2Obj(
+      renderFactory(
+        cocoSsd.load({
+          base: "mobilenet_v2"
+        }), ssdV2
+      )
     )
   }
 
+  const renderFactory = async (modelProm, canvaRef) => {
 
-  const renderDetection = async () => {
-  const model = await modelPromise;
+    try {
 
-  console.log("model loaded");
-  console.time("predict1");
+      const model = await modelProm
 
-  const result = await model.detect(imageRef.current);
-  console.timeEnd("predict1");
+      const result = await model.detect(imageRef.current);
 
-  const c = resRef.current;
-  // const c = document.getElementById("canvas");
-  const context = c.getContext("2d");
+      const c = canvaRef.current
+      
+      const context = c.getContext("2d");
 
-  context.canvas.width = dimension.width
-  context.canvas.height = dimension.height
-  // Added dWidth and dHeight for proper dimension
-  context.drawImage(imageRef.current, 0, 0);
-  context.font = "12px Arial";
+      context.canvas.width = dimension.width
+      context.canvas.height = dimension.height
+      // Added dWidth and dHeight for proper dimension
+      context.drawImage(imageRef.current, 0, 0, dimension.width, dimension.height);
+      context.font = "12px Arial";
+    
+      console.log("number of detections: ", result.length);
+      for (let i = 0; i < result.length; i++) {
+        context.beginPath();
+        context.rect(...result[i].bbox);
+        context.lineWidth = 1;
+        context.strokeStyle = "red";
+        context.fillStyle = "red";
+        context.stroke();
+        context.fillText(
+          result[i].score.toFixed(3) + " " + result[i].class,
+          result[i].bbox[0],
+          result[i].bbox[1] > 10 ? result[i].bbox[1] - 5 : 10
+        );
+      }
 
-
-
-  renderObject(result)
-  // console.log(result)
-
-  console.log("number of detections: ", result.length);
-  for (let i = 0; i < result.length; i++) {
-    context.beginPath();
-    context.rect(...result[i].bbox);
-    context.lineWidth = 1;
-    context.strokeStyle = "red";
-    context.fillStyle = "red";
-    context.stroke();
-    context.fillText(
-      result[i].score.toFixed(3) + " " + result[i].class,
-      result[i].bbox[0],
-      result[i].bbox[1] > 10 ? result[i].bbox[1] - 5 : 10
-    );
+      return renderObject(result)
+  } catch (err) {
+    console.error(err)
   }
   }
 
@@ -83,8 +101,8 @@ const App = () => {
       score: x.score.toFixed(2)
     }))
 
-
-    setObjects(data)
+    return data
+    // setObjects(data)
   }
   
   const handleImage = (e) => {
@@ -93,8 +111,6 @@ const App = () => {
     newImage.src = URL.createObjectURL(e.target.files[0])
     
     newImage.onload = () => {
-
-
       setDimension({
         width: newImage.width, 
         height: newImage.height  
@@ -107,50 +123,40 @@ const App = () => {
 
   return (
     <>
-    <div>
-      <select id="base_model" onChange={changeModel}>
-        <option value="lite_mobilenet_v2">SSD Lite Mobilenet V2</option>
-        <option value="mobilenet_v1">SSD Mobilenet v1</option>
-        <option value="mobilenet_v2">SSD Mobilenet v2</option>
-      </select>
-    </div>
-    <div className='text-[4rem]'>Hello world</div>
-    <button onClick={renderDetection} className='border-2 p-2 rounded-lg border-black text-[1.5rem]'>Click</button>
+    <header className=' bg-blue-600 text-white font-bold text-[1.5rem] px-[2rem] py-2'>
+      <h4>Detect'O</h4>
+    </header>
+    <main className='px-[5rem]'>
+    <button onClick={renderPicture} className='border-2 p-2 rounded-lg border-black text-[1.5rem]'>Click</button>
     <div>
       <input type="file" onChange={handleImage}/>
       <img src={image ? image : ''}  alt="image" ref={imageRef}/>
     </div>
-    <div className='flex gap-4 max-w-[480px]'>
-      <canvas id="canvas" className='max-w-[480px]'  ref={resRef}></canvas>
-    </div>
-    <li>
-      { objects.length ? 
-      
-      <table className='border-2 border-black w-[480px]'>
-        <tr className=' border-2 border-black'>
-          <th>Class</th>
-          <th>Score</th>
-        </tr>
-        {
-          objects.map((x, idx) => 
-          <tr key={idx} className=' border-2 border-black'>
-            <td>
-              {x.class}
-            </td>
-            <td>
-              {x.score}
-            </td>
-          </tr>  
-          )
-        }
-      </table>
-        :
-          <h4>None is detected</h4>
-      }
-      <ul>
+    <div className='flex gap-4 '>
+      <Canva 
+        ref={ssdV1} 
+        title={"Mobilenet V1"} 
+        objects={ssdV1Obj} 
+        enableModel={(data) => setEnaV1(data)}
+        />
+    {enaV1}
+      <Canva 
+        ref={ssdV2} 
+        title={"Mobilenet V2"} 
+        objects={ssdV2Obj} 
+        enableModel={(data) => setEnaV2(data)}
+        />
 
-      </ul>
-    </li>
+        {enaV2}
+      <Canva 
+        ref={ssdLiteRef} 
+        title={"Mobilenet Lite"} 
+        objects={ssdLiteObj} 
+        enableModel={(data) => setEnaLite(data)}
+        />
+        {enaLite}
+    </div>
+    </main>
     </>
   )
 }
